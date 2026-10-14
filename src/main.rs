@@ -21,6 +21,8 @@ mod patch;
 mod proto;
 mod server;
 #[cfg(target_os = "ios")]
+mod sysmon;
+#[cfg(target_os = "ios")]
 mod touch;
 
 use anyhow::{Context, Result};

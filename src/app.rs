@@ -189,6 +189,8 @@ impl App {
         let Some(window) = self.window.clone() else { return };
         if self.started { return; }
         self.started = true;
+        #[cfg(target_os = "ios")]
+        crate::sysmon::start();
         let (w, h) = backbuffer_size(&window);
         input::set_size(w, h);
         let (rt, startup) = (self.rt.clone(), self.startup.clone());

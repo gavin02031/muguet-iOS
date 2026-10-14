@@ -69,6 +69,7 @@ fn redirect_logs_if_detached() {
     }
 
     if cfg!(target_os = "ios") {
+        redirect_logs_ios();
         return;
     }
     let in_bundle = std::env::current_exe().map(|p| p.to_string_lossy().contains(".app/Contents/MacOS/")).unwrap_or(false);
@@ -84,6 +85,31 @@ fn redirect_logs_if_detached() {
             dup2(fd, 2);
             dup2(fd, 1);
         }
+    }
+}
+
+/// iOS: there is no terminal, so tee stdout/stderr into Documents/muguet.log
+/// (visible in the Files app because UIFileSharingEnabled is on).
+/// The previous run's log is kept as muguet.prev.log so a crash can be inspected after relaunch.
+fn redirect_logs_ios() {
+    extern "C" {
+        fn dup2(old: i32, new: i32) -> i32;
+    }
+    let dir = support_dir();
+    let _ = std::fs::create_dir_all(&dir);
+    let path = dir.join("muguet.log");
+    let prev = dir.join("muguet.prev.log");
+    if path.exists() {
+        let _ = std::fs::rename(&path, &prev);
+    }
+    if let Ok(f) = std::fs::File::create(&path) {
+        use std::os::fd::IntoRawFd;
+        let fd = f.into_raw_fd();
+        unsafe {
+            dup2(fd, 2);
+            dup2(fd, 1);
+        }
+        eprintln!("[log] muguet {} (iOS), logging to {}", env!("CARGO_PKG_VERSION"), path.display());
     }
 }
 
@@ -116,7 +142,7 @@ fn locate() -> anyhow::Result<PathBuf> {
     Ok(build)
 }
 
-const SETTING_VARS: &[&str] = &["MUGUET_SCALE", "MUGUET_MOUSE_SENS", "MUGUET_TOUCH_SENS", "MUGUET_RES", "MUGUET_FULLSCREEN", "MUGUET_MUTE", "MUGUET_HOST", "MUGUET_SERVER", "MUGUET_NAME", "MUGUET_SHOW_FPS"];
+const SETTING_VARS: &[&str] = &["MUGUET_SCALE", "MUGUET_MOUSE_SENS", "MUGUET_TOUCH_SENS", "MUGUET_RES", "MUGUET_FULLSCREEN", "MUGUET_MUTE", "MUGUET_HOST", "MUGUET_SERVER", "MUGUET_NAME", "MUGUET_SHOW_FPS", "MUGUET_CONTROLS"];
 
 #[cfg(target_os = "ios")]
 pub fn reload() -> Vec<String> {
@@ -144,6 +170,7 @@ fn settings(cfg_path: &Path) -> Vec<String> {
     if flag("fullscreen") { set_default("MUGUET_FULLSCREEN", "1"); }
     if flag("mute") { set_default("MUGUET_MUTE", "1"); }
     if flag("show_fps") { set_default("MUGUET_SHOW_FPS", "1"); }
+    if let Some(v) = cfg.get("controls").and_then(|v| v.as_str()) { set_default("MUGUET_CONTROLS", v); }
 
     let text = |k: &str| cfg.get(k).and_then(|v| v.as_str()).map(str::trim).filter(|v| !v.is_empty());
     if flag("multiplayer") {

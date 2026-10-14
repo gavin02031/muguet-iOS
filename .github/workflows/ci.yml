@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: compile check (no game files)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain
+        run: |
+          brew install rustup xcodegen || true
+          export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"
+          rustup toolchain install 1.98.1 --profile minimal
+          rustup target add aarch64-apple-ios --toolchain 1.98.1
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+      - name: cargo check (iOS, no game code)
+        run: |
+          export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"
+          IPHONEOS_DEPLOYMENT_TARGET=15.0 cargo +1.98.1 check --release --no-default-features --target aarch64-apple-ios --target-dir target/ios
+      - name: cargo check (macOS host, jit)
+        run: |
+          export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"
+          cargo +1.98.1 check --release

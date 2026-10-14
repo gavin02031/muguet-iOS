@@ -46,33 +46,33 @@ const fn b(anchor: Anchor, radius: f64, on_foot: Option<(&'static str, Act)>, in
     Spec { anchor, radius, on_foot, in_car, nav: false }
 }
 const fn n(x: f64, label: &'static str, key: &'static str) -> Spec {
-    Spec { anchor: Anchor::Nav(x, 0.0), radius: 21.0, on_foot: Some((label, Act::Key(key))), in_car: Some((label, Act::Key(key))), nav: true }
+    Spec { anchor: Anchor::Nav(x, 0.0), radius: 24.0, on_foot: Some((label, Act::Key(key))), in_car: Some((label, Act::Key(key))), nav: true }
 }
 
 use Act::*;
 use Anchor::*;
 const BUTTONS: &[Spec] = &[
     b(BottomRight(62.0, 68.0), 40.0, Some(("FIRE", Mouse(1))), Some(("GAS", Key("KeyW")))),
-    b(BottomRight(158.0, 46.0), 31.0, Some(("AIM", AimToggle)), Some(("BRAKE", Key("KeyS")))),
-    b(BottomRight(58.0, 168.0), 28.0, Some(("JUMP", Key("Space"))), Some(("H.BRAKE", Key("Space")))),
-    b(BottomRight(140.0, 132.0), 26.0, Some(("ENTER", Key("KeyF"))), Some(("EXIT", Key("KeyF")))),
-    b(BottomRight(222.0, 98.0), 24.0, Some(("RELOAD", Key("KeyR"))), Some(("HORN", Horn))),
-    b(BottomRight(140.0, 200.0), 26.0, None, Some(("SHOOT", Mouse(1)))),
-    b(BottomRight(222.0, 160.0), 24.0, None, Some(("DUCK", Key("KeyX")))),
-    b(TopRight(30.0, 30.0), 22.0, Some(("WEAPON", Key("Tab"))), Some(("WEAPON", Key("Tab")))),
-    b(TopRight(84.0, 30.0), 22.0, Some(("COVER", Key("KeyQ"))), Some(("RADIO", Key("KeyQ")))),
-    b(TopRight(138.0, 30.0), 22.0, Some(("CROUCH", Key("ControlLeft"))), Some(("LOOK\nBACK", Key("KeyC")))),
-    b(TopRight(192.0, 30.0), 22.0, Some(("CAM", Key("KeyV"))), Some(("CAM", Key("KeyV")))),
-    b(TopLeft(30.0, 30.0), 22.0, Some(("PAUSE", KeyNav("Escape"))), Some(("PAUSE", KeyNav("Escape")))),
-    b(TopLeft(84.0, 30.0), 22.0, Some(("PHONE", KeyNav("ArrowUp"))), Some(("PHONE", KeyNav("ArrowUp")))),
-    b(TopLeft(138.0, 30.0), 22.0, Some(("MENU\nKEYS", NavToggle)), Some(("MENU\nKEYS", NavToggle))),
-    b(TopLeft(192.0, 30.0), 22.0, Some(("SWITCH", Key("AltLeft"))), Some(("SWITCH", Key("AltLeft")))),
-    n(-135.0, "◀", "ArrowLeft"),
-    n(-87.0, "▲", "ArrowUp"),
-    n(-39.0, "▼", "ArrowDown"),
-    n(9.0, "▶", "ArrowRight"),
-    n(63.0, "OK", "Enter"),
-    n(117.0, "BACK", "Backspace"),
+    b(BottomRight(170.0, 52.0), 30.0, Some(("AIM", AimToggle)), Some(("BRAKE", Key("KeyS")))),
+    b(BottomRight(58.0, 168.0), 30.0, Some(("JUMP", Key("Space"))), Some(("H.BRAKE", Key("Space")))),
+    b(BottomRight(140.0, 132.0), 30.0, Some(("ENTER", Key("KeyF"))), Some(("EXIT", Key("KeyF")))),
+    b(BottomRight(222.0, 98.0), 30.0, Some(("RELOAD", Key("KeyR"))), Some(("HORN", Horn))),
+    b(BottomRight(140.0, 200.0), 30.0, None, Some(("SHOOT", Mouse(1)))),
+    b(BottomRight(222.0, 160.0), 30.0, None, Some(("DUCK", Key("KeyX")))),
+    b(TopRight(30.0, 30.0), 24.0, Some(("WEAPON", Key("Tab"))), Some(("WEAPON", Key("Tab")))),
+    b(TopRight(84.0, 30.0), 24.0, Some(("COVER", Key("KeyQ"))), Some(("RADIO", Key("KeyQ")))),
+    b(TopRight(138.0, 30.0), 24.0, Some(("CROUCH", Key("ControlLeft"))), Some(("LOOK\nBACK", Key("KeyC")))),
+    b(TopRight(192.0, 30.0), 24.0, Some(("CAM", Key("KeyV"))), Some(("CAM", Key("KeyV")))),
+    b(TopLeft(30.0, 30.0), 24.0, Some(("PAUSE", KeyNav("Escape"))), Some(("PAUSE", KeyNav("Escape")))),
+    b(TopLeft(84.0, 30.0), 24.0, Some(("PHONE", KeyNav("ArrowUp"))), Some(("PHONE", KeyNav("ArrowUp")))),
+    b(TopLeft(138.0, 30.0), 24.0, Some(("MENU\nKEYS", NavToggle)), Some(("MENU\nKEYS", NavToggle))),
+    b(TopLeft(192.0, 30.0), 24.0, Some(("SWITCH", Key("AltLeft"))), Some(("SWITCH", Key("AltLeft")))),
+    n(-150.0, "◀", "ArrowLeft"),
+    n(-96.0, "▲", "ArrowUp"),
+    n(-42.0, "▼", "ArrowDown"),
+    n(12.0, "▶", "ArrowRight"),
+    n(66.0, "OK", "Enter"),
+    n(120.0, "BACK", "Backspace"),
 ];
 
 const STICK_RADIUS: f64 = 58.0;
@@ -125,6 +125,7 @@ struct Overlay {
     in_car: bool,
     menu: bool,
     hidden: bool,
+    last_touch: std::time::Instant,
 }
 
 thread_local! {
@@ -204,7 +205,79 @@ fn circle(parent: &AnyObject, center: (f64, f64), r: f64, white: f64, alpha: f64
     }
 }
 
+
+/// "controls" setting: "b" (default, icon controls) or "classic" (text labels).
+static ICONS: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| std::env::var("MUGUET_CONTROLS").map(|v| v != "classic").unwrap_or(true));
+
+/// SF Symbol candidates per control, first one the OS knows wins (iOS 15 safe fallbacks).
+fn icon_names(text: &str) -> &'static [&'static str] {
+    match text.replace('\n', " ").as_str() {
+        "FIRE" | "SHOOT" => &["burst.fill", "scope"],
+        "AIM" => &["scope", "viewfinder"],
+        "JUMP" => &["chevron.up.2", "arrow.up.circle.fill"],
+        "ENTER" => &["door.left.hand.open", "arrow.right.square.fill"],
+        "EXIT" => &["door.left.hand.closed", "arrow.left.square.fill"],
+        "RELOAD" => &["arrow.triangle.2.circlepath", "arrow.clockwise"],
+        "WEAPON" => &["circle.hexagongrid.fill", "circle.grid.cross.fill", "scope"],
+        "COVER" => &["shield.lefthalf.filled", "shield.fill"],
+        "CROUCH" | "DUCK" => &["arrow.down.to.line", "chevron.down"],
+        "CAM" => &["camera.fill", "video.fill"],
+        "PAUSE" => &["pause.fill", "pause"],
+        "PHONE" => &["iphone", "phone.fill"],
+        "MENU KEYS" => &["square.grid.2x2.fill", "keyboard"],
+        "SWITCH" => &["person.2.fill", "arrow.left.arrow.right"],
+        "GAS" => &["speedometer", "arrow.up.circle.fill"],
+        "BRAKE" => &["hand.raised.fill", "stop.fill"],
+        "H.BRAKE" => &["exclamationmark.octagon.fill", "exclamationmark.circle.fill"],
+        "HORN" => &["speaker.wave.3.fill", "speaker.fill"],
+        "RADIO" => &["radio.fill", "radio", "music.note"],
+        "LOOK BACK" => &["arrow.uturn.backward", "arrow.counterclockwise"],
+        "◀" => &["chevron.left"],
+        "▲" => &["chevron.up"],
+        "▼" => &["chevron.down"],
+        "▶" => &["chevron.right"],
+        "OK" => &["checkmark", "checkmark.circle.fill"],
+        "BACK" => &["arrow.uturn.left", "chevron.backward"],
+        _ => &[],
+    }
+}
+
+fn icon_label(parent: &AnyObject, r: f64) -> Retained<AnyObject> {
+    unsafe {
+        let v: Retained<AnyObject> = msg_send![class!(UIImageView), new];
+        let inset = r * 0.46;
+        let _: () = msg_send![&*v, setFrame: rect(inset, inset, 2.0 * (r - inset), 2.0 * (r - inset))];
+        let _: () = msg_send![&*v, setUserInteractionEnabled: false];
+        let _: () = msg_send![&*v, setContentMode: 1isize]; // scale aspect fit
+        let _: () = msg_send![&*v, setTintColor: &*color(1.0, 0.92)];
+        let _: () = msg_send![parent, addSubview: &*v];
+        v
+    }
+}
+
+fn set_icon(v: &AnyObject, text: &str) {
+    unsafe {
+        let none: *const AnyObject = std::ptr::null();
+        for name in icon_names(text) {
+            let img: Option<Retained<AnyObject>> = msg_send![class!(UIImage), systemImageNamed: &*NSString::from_str(name)];
+            if let Some(img) = img {
+                let _: () = msg_send![v, setImage: &*img];
+                return;
+            }
+        }
+        let _: () = msg_send![v, setImage: none];
+    }
+}
+
+fn haptic() {
+    thread_local! {
+        static GEN: Retained<AnyObject> = unsafe { msg_send![class!(UISelectionFeedbackGenerator), new] };
+    }
+    GEN.with(|g| unsafe { let _: () = msg_send![&**g, selectionChanged]; });
+}
+
 fn label(parent: &AnyObject, r: f64) -> Retained<AnyObject> {
+    if *ICONS { return icon_label(parent, r); }
     unsafe {
         let l: Retained<AnyObject> = msg_send![class!(UILabel), new];
         let _: () = msg_send![&*l, setFrame: rect(2.0, 0.0, 2.0 * r - 4.0, 2.0 * r)];
@@ -221,6 +294,7 @@ fn label(parent: &AnyObject, r: f64) -> Retained<AnyObject> {
 }
 
 fn set_text(l: &AnyObject, text: &str) {
+    if *ICONS { set_icon(l, text); return; }
     unsafe { let _: () = msg_send![l, setText: &*NSString::from_str(text)]; }
 }
 fn set_hidden(v: &AnyObject, hidden: bool) {
@@ -275,7 +349,7 @@ pub fn install(window: &Window) {
         root, buttons, stick_base, stick_knob, stick_home, safe, full: (full.width, full.height), scale,
         grips: HashMap::new(), held: HashSet::new(), since: HashMap::new(),
         mouse_since: [std::time::Instant::now(); 2], lingering: false, mouse: 0, aim_latched: false,
-        nav: false, in_car: false, menu: false, hidden: false,
+        nav: false, in_car: false, menu: false, hidden: false, last_touch: std::time::Instant::now(),
     };
     o.relabel();
     eprintln!("[touch] overlay ready ({:.0}x{:.0} pt, safe area {:.0},{:.0} {:.0}x{:.0})", full.width, full.height, sx, sy, sw, sh);
@@ -335,11 +409,13 @@ impl Overlay {
     }
 
     fn touch(&mut self, t: &Touch) {
+        self.last_touch = std::time::Instant::now();
         let p = (t.location.x / self.scale, t.location.y / self.scale);
         match t.phase {
             TouchPhase::Started => {
                 if let Some(idx) = self.button_at(p) {
                     self.grips.insert(t.id, Grip::Button { idx, start: p, last: p });
+                    haptic();
                     match self.spec_act(idx).map(|(_, a)| a) {
                         Some(AimToggle) => self.aim_latched = !self.aim_latched,
                         Some(NavToggle) => { self.nav = !self.nav; self.relabel(); }
@@ -479,6 +555,10 @@ pub fn refresh() -> bool {
         let mut guard = cell.borrow_mut();
         let Some(o) = guard.as_mut() else { return false };
         fps_tick(o);
+        if *ICONS {
+            let idle = o.grips.is_empty() && o.last_touch.elapsed() > std::time::Duration::from_secs(3);
+            unsafe { let _: () = msg_send![&*o.root, setAlpha: if idle { 0.4f64 } else { 1.0f64 }]; }
+        }
         if o.lingering { o.apply(); }
         let mut wheeling = false;
         for g in o.grips.values() {
